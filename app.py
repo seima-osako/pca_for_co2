@@ -1,5 +1,11 @@
 import glob
 from PIL import Image
+import pandas as pd
+import geopandas as gpd
+from scipy import stats
+import plotly.express as px
+import plotly.graph_objs as go
+
 import streamlit as st
 
 for f in sorted(glob.glob(('./img/*.png'))):
@@ -52,7 +58,7 @@ $z_{i}=a(x_{i}- \bar{x})+b(y_{i}- \bar{y})$となる。
 st.image(img_03, caption='図3')
 
 r'''
-「情報の損失の最小化」のかわりにz_{i}たちの大きさの総和（であると同時にバラツキ具合）
+「情報の損失の最小化」のかわりに$z_{i}$たちの大きさの総和（であると同時にバラツキ具合）
 
 $\frac{1}{n}\sum_{i=1}^{n}z_{i}^{2}=\frac{1}{n}\sum_{i=1}^{n}\left \{ a(x_{i}- \bar{x})+b(y_{i}- \bar{y}) \right \} ^{2}=a^{2}S_{xx}+2abS_{xy}+b^{2}S_{yy}$
 
@@ -63,4 +69,32 @@ $\frac{1}{n}\sum_{i=1}^{n}z_{i}^{2}=\frac{1}{n}\sum_{i=1}^{n}\left \{ a(x_{i}- \
 - $S_{yy}=\frac{1}{n}\sum_{i=1}^{n}(y_{i}- \bar{y})^{2}$
 
 これらをラグランジュ乗数法で解く
+
+### 分析結果
+'''
+
+pca_score = gpd.read_file('./data/shp/pca_score.shp')
+pca_score = pca_score.set_index('geo_id')
+
+pca_num = st.sidebar.radio(
+    "Which PCA pattern",
+    ('第一主成分', '第二主成分', '第三主成分'))
+if pca_num == '第一主成分':
+    color = 'pca1_score'
+    title = '第一主成分(寄与率＝64%)<br>南北勾配が見られるので、すなわち北半球か南半球かの指標'
+elif pca_num == '第二主成分':
+    color = 'pca2_score'
+    title = '第二主成分(寄与率＝14%)<br>低緯度と中高緯度で勾配が見られるので、すなわち植物活動が活発かどうかの指標'
+else:
+    color = 'pca3_score'
+    title = '第三主成分(寄与率＝5%)<br>南米沿岸域と東アジアやオーストラリア、南アフリカとの間に勾配が見られる。エルニーニョ現象に関連した遠隔相関か？'
+
+fig = px.choropleth_mapbox(pca_score, geojson=gpd.GeoSeries(pca_score['geometry']).__geo_interface__, locations=pca_score.index, color=color,
+                           color_continuous_scale='Jet', center={"lat": pca_score['lat'].mean(), "lon": pca_score['lon'].mean()},
+                           hover_data=['lat', 'lon'], mapbox_style="carto-positron", opacity=0.5,zoom=1, width=1000, height=800, title=title)
+st.plotly_chart(fig, use_container_width=False)
+
+'''
+### 補足
+
 '''
